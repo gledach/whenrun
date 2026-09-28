@@ -12,6 +12,7 @@ const COMMANDS = {
   report: () => import('../cli/report.mjs'),
   tasks: () => import('../cli/tasks.mjs'),
   doctor: () => import('../cli/doctor.mjs'),
+  where: () => import('../cli/where.mjs'),
   help: () => import('../cli/help.mjs'),
 };
 

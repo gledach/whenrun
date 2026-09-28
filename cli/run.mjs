@@ -5,7 +5,7 @@
  * independent locks on the same door, because this is the command that can cost
  * you something. */
 
-import { getPrices, getRenewableShare, DEFAULT_SOURCE, DEFAULT_ZONE } from '../core/collect.mjs';
+import { getPrices, getRenewableShare } from '../core/collect.mjs';
 import { planTask } from '../core/schedule.mjs';
 import { loadTasks } from '../core/tasks.mjs';
 import { loadTariff } from '../core/tariff.mjs';
@@ -13,6 +13,7 @@ import { runTask, describe, planEnv, ExecRefused } from '../core/exec.mjs';
 import { appendRun, markRan } from '../core/store.mjs';
 import { formatEur } from '../core/money.mjs';
 import { c, range, untilPhrase, hhmm } from '../core/format.mjs';
+import { loadLocation } from '../core/location.mjs';
 import { bool, num } from '../core/args.mjs';
 
 export default async function run({ flags }) {
@@ -24,8 +25,7 @@ export default async function run({ flags }) {
 
   const execute = bool(flags.execute);
   const waitForWindow = !bool(flags.now);
-  const zone = flags.zone || DEFAULT_ZONE;
-  const source = flags.source || DEFAULT_SOURCE;
+  const { zone, source, country } = await loadLocation(flags);
   const now = Date.now();
 
   const { tasks } = await loadTasks();
@@ -37,7 +37,7 @@ export default async function run({ flags }) {
 
   const [{ series: prices, coverage }, ren, { tariff }] = await Promise.all([
     getPrices({ zone, source, offline: bool(flags.offline), now }),
-    getRenewableShare({ offline: bool(flags.offline), now }).catch(() => ({ series: null })),
+    getRenewableShare({ country, offline: bool(flags.offline), now }).catch(() => ({ series: null })),
     loadTariff(),
   ]);
 

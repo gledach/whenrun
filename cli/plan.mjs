@@ -1,21 +1,21 @@
-import { getPrices, getRenewableShare, DEFAULT_SOURCE, DEFAULT_ZONE } from '../core/collect.mjs';
+import { getPrices, getRenewableShare } from '../core/collect.mjs';
 import { planTask } from '../core/schedule.mjs';
 import { loadTasks, validateTask } from '../core/tasks.mjs';
 import { loadTariff } from '../core/tariff.mjs';
 import { formatEur } from '../core/money.mjs';
 import { c, range, untilPhrase, coverageLine, table } from '../core/format.mjs';
+import { loadLocation } from '../core/location.mjs';
 import { bool, minutes, num } from '../core/args.mjs';
 
 export default async function plan({ flags }) {
-  const zone = flags.zone || DEFAULT_ZONE;
-  const source = flags.source || DEFAULT_SOURCE;
+  const { zone, source, country } = await loadLocation(flags);
   const offline = bool(flags.offline);
   const now = Date.now();
 
   const [{ series: prices, coverage }, ren, { tariff, file: tariffFile, isDefault }] =
     await Promise.all([
       getPrices({ zone, source, offline, now }),
-      getRenewableShare({ offline, now }).catch(() => ({ series: null })),
+      getRenewableShare({ country, offline, now }).catch(() => ({ series: null })),
       loadTariff(),
     ]);
 

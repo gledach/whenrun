@@ -7,7 +7,8 @@
 import fs from 'node:fs';
 import { loadTasks } from '../core/tasks.mjs';
 import { loadTariff } from '../core/tariff.mjs';
-import { getPrices, getRenewableShare, SOURCES, DEFAULT_ZONE } from '../core/collect.mjs';
+import { getPrices, getRenewableShare, SOURCES } from '../core/collect.mjs';
+import { loadLocation } from '../core/location.mjs';
 import { stats, resolutionMinutes, slice } from '../core/series.mjs';
 import { paths, pretty } from '../core/paths.mjs';
 import { readLedger } from '../core/store.mjs';
@@ -16,7 +17,8 @@ import { c } from '../core/format.mjs';
 import { bool } from '../core/args.mjs';
 
 export default async function doctor({ flags }) {
-  const zone = flags.zone || DEFAULT_ZONE;
+  const loc = await loadLocation(flags);
+  const zone = loc.zone;
   const offline = bool(flags.offline);
   const now = Date.now();
   let problems = 0;
@@ -74,7 +76,14 @@ export default async function doctor({ flags }) {
     warn('network checks skipped', '--offline');
   } else {
     for (const name of Object.keys(SOURCES)) {
-      const zoneForSource = name === 'awattar' ? 'DE' : zone;
+      /* aWATTar serves Germany and Austria only. Checking it against a hardcoded
+         DE while the operator is in France would report a healthy source they
+         cannot actually use. Skip it instead, and say why. */
+      const zoneForSource = name === 'awattar' ? (zone === 'AT' ? 'AT' : 'DE') : zone;
+      if (name === 'awattar' && zone !== 'DE-LU' && zone !== 'AT') {
+        warn(`source ${name}`, `does not serve ${zone}. Fine: energy-charts does, and is the default`);
+        continue;
+      }
       try {
         const { series, coverage, from } = await getPrices({
           source: name,
@@ -105,7 +114,7 @@ export default async function doctor({ flags }) {
     }
 
     try {
-      const { series } = await getRenewableShare({ now });
+      const { series } = await getRenewableShare({ country: loc.country, now });
       if (series) {
         const st = stats(series.slots);
         ok('renewable forecast', `${series.slots.length} slots, ${st.min.toFixed(0)}% to ${st.max.toFixed(0)}%`);

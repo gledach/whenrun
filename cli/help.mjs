@@ -18,6 +18,7 @@ ${b('COMMANDS')}
   ${b('daemon')}                 Keep running, execute tasks at their windows
   ${b('report')}                 What it has actually saved you
   ${b('tasks')}                  List the task file and what is enabled
+  ${b('where')}                  Your location, and every zone this supports
   ${b('doctor')}                 Check config, connectivity and data freshness
   ${b('help')}                   This
 
@@ -48,9 +49,18 @@ ${b('RUNNING THINGS')}
     whenrun run --task=backup --execute   ${d('# actually runs it at the window')}
     whenrun daemon --execute              ${d('# all enabled tasks, continuously')}
 
+${b('WHERE YOU ARE')}
+
+  Ships set to 82319 Starnberg, bidding zone DE-LU. To change it for good:
+
+    cp config/location.default.mjs config/location.local.mjs
+
+  then edit the copy, which is gitignored. ${b('whenrun where')} lists every zone.
+  For one command only, pass ${b('--zone=AT')}.
+
 ${b('GLOBAL FLAGS')}
 
-  --zone=DE-LU          Bidding zone. Default DE-LU
+  --zone=DE-LU          Bidding zone for this command only
   --source=energy-charts|awattar
   --offline             Use the cache only, make no network call
   --json                Machine-readable output

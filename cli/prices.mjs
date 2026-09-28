@@ -1,12 +1,12 @@
-import { getPrices, getRenewableShare, DEFAULT_SOURCE, DEFAULT_ZONE } from '../core/collect.mjs';
+import { getPrices, getRenewableShare } from '../core/collect.mjs';
 import { bestWindow, slice, stats, resolutionMinutes, HOUR } from '../core/series.mjs';
 import { deliveredCentPerKwh, DEFAULT_TARIFF } from '../core/money.mjs';
 import { c, colourSparkline, hhmm, dayLabel, range, coverageLine, table } from '../core/format.mjs';
+import { loadLocation } from '../core/location.mjs';
 import { bool } from '../core/args.mjs';
 
 export default async function prices({ flags }) {
-  const zone = flags.zone || DEFAULT_ZONE;
-  const source = flags.source || DEFAULT_SOURCE;
+  const { zone, source, country, place, postcode } = await loadLocation(flags);
   const offline = bool(flags.offline);
   const now = Date.now();
 
@@ -17,7 +17,7 @@ export default async function prices({ flags }) {
     return 1;
   }
 
-  const ren = await getRenewableShare({ offline, now }).catch(() => ({ series: null }));
+  const ren = await getRenewableShare({ country, offline, now }).catch(() => ({ series: null }));
 
   if (bool(flags.json)) {
     console.log(JSON.stringify({ series, coverage, renewable: ren.series }, null, 2));
@@ -31,7 +31,8 @@ export default async function prices({ flags }) {
 
   console.log('');
   console.log(
-    `${c.bold(zone)} ${c.dim(`· ${source} · ${res}min slots · ${from}`)}  ${coverageLine(coverage)}`,
+    `${c.bold(zone)}${place ? c.dim(` · ${[postcode, place].filter(Boolean).join(' ')}`) : ''}` +
+      ` ${c.dim(`· ${source} · ${res}min slots · ${from}`)}  ${coverageLine(coverage)}`,
   );
   for (const w of coverage.warnings) console.log(c.yellow(`  ! ${w}`));
   console.log('');

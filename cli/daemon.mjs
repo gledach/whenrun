@@ -17,7 +17,7 @@
  */
 
 import fs from 'node:fs';
-import { getPrices, getRenewableShare, DEFAULT_SOURCE, DEFAULT_ZONE } from '../core/collect.mjs';
+import { getPrices, getRenewableShare } from '../core/collect.mjs';
 import { planTask } from '../core/schedule.mjs';
 import { loadTasks } from '../core/tasks.mjs';
 import { loadTariff } from '../core/tariff.mjs';
@@ -26,14 +26,14 @@ import { appendRun, markRan, lastRunAt, cacheAgeMs } from '../core/store.mjs';
 import { paths, ensureDataDir, pretty } from '../core/paths.mjs';
 import { formatEur } from '../core/money.mjs';
 import { c, hhmm, range, untilPhrase } from '../core/format.mjs';
+import { loadLocation } from '../core/location.mjs';
 import { bool, num } from '../core/args.mjs';
 
 const TICK_MS = 60_000;
 
 export default async function daemon({ flags }) {
   const execute = bool(flags.execute);
-  const zone = flags.zone || DEFAULT_ZONE;
-  const source = flags.source || DEFAULT_SOURCE;
+  const { zone, source, country } = await loadLocation(flags);
   const refreshMinutes = num(flags.refresh, 30);
   /* One pass and exit. For anyone who would rather drive this from cron or
      Task Scheduler than keep a process resident, which on Windows is often the
@@ -81,7 +81,7 @@ export default async function daemon({ flags }) {
 
   try {
     while (!stopping) {
-      await tick({ zone, source, refreshMinutes, execute, tariff, flags });
+      await tick({ zone, source, country, refreshMinutes, execute, tariff, flags });
       if (once || stopping) break;
       await new Promise((resolve) => {
         const timer = setTimeout(resolve, tickMs);
@@ -100,7 +100,7 @@ export default async function daemon({ flags }) {
   return 0;
 }
 
-async function tick({ zone, source, refreshMinutes, execute, tariff, flags }) {
+async function tick({ zone, source, country, refreshMinutes, execute, tariff, flags }) {
   const now = Date.now();
 
   const stale = cacheAgeMs('price', source, zone) > refreshMinutes * 60_000;
@@ -110,7 +110,7 @@ async function tick({ zone, source, refreshMinutes, execute, tariff, flags }) {
     offline: !stale,
     now,
   });
-  const ren = await getRenewableShare({ offline: !stale, now }).catch(() => ({ series: null }));
+  const ren = await getRenewableShare({ country, offline: !stale, now }).catch(() => ({ series: null }));
 
   if (!prices) {
     log(c.red(`no price data: ${coverage.warnings.join('; ')}`));

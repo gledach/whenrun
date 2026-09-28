@@ -1,4 +1,5 @@
 # Your configuration. Both are yours, neither belongs upstream.
+config/location.local.mjs
 config/tasks.local.mjs
 config/tariff.local.mjs
 

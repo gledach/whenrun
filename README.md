@@ -37,6 +37,34 @@ Since January 2025 every German electricity supplier has had to offer a dynamic 
 the day-ahead auction is public. The information has been free the whole time. What was
 missing was something that acts on it without tying you to one supplier's app.
 
+## Where you are
+
+Ships set to **82319 Starnberg**, bidding zone **DE-LU**. To see that and every zone it
+supports:
+
+```bash
+whenrun where
+```
+
+To change it for good:
+
+```bash
+cp config/location.default.mjs config/location.local.mjs
+```
+
+Then edit the copy. It is gitignored, so it is also the right place for your postcode if you
+would rather that were not in a published repository. For a single command, pass
+`--zone=AT`.
+
+Verified against live data for DE-LU, AT, FR, CH, NL, ES and PL. A bidding zone is not a
+country: Germany and Luxembourg share DE-LU, Denmark is split at the Great Belt, and Italy
+and Norway have several. The renewable-share forecast is published per country and is
+derived from the zone, so you only set one thing.
+
+The postcode labels output and nothing else yet. Network fees vary by grid operator rather
+than by bidding zone and are still modelled as flat, which is
+[roadmap item 2](./docs/roadmap.md).
+
 ## What it does
 
 ```bash
@@ -49,6 +77,7 @@ whenrun run --task=backup --execute                 # wait for the window, then 
 whenrun daemon --execute                            # all enabled tasks, continuously
 whenrun daemon --once --execute                     # one pass, for cron or Task Scheduler
 whenrun report                                      # what it actually saved
+whenrun where                                       # your location and every zone
 whenrun doctor                                      # config, connectivity, data freshness
 ```
 
@@ -159,7 +188,7 @@ rounding error.
 ## Tests
 
 ```bash
-npm test          # the gate: 108 tests, fully offline, no network
+npm test          # the gate: 128 tests, fully offline, no network
 node test/live.mjs          # checks the real APIs still answer in the expected shape
 node test/live.mjs --update # and refreshes the captured fixtures
 ```
