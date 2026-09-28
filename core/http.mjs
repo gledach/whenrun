@@ -18,42 +18,83 @@ export class SourceError extends Error {
   }
 }
 
-export async function getJson(url, { source, timeoutMs = 20_000, headers = {} } = {}) {
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), timeoutMs);
+/* These are free public services. Asking for several zones in a row is enough to
+   earn a 429, and a daemon that gives up on the first one stops scheduling for
+   the rest of the day. Transient statuses are retried with backoff; a 404 or a
+   400 is not, because retrying a wrong URL is just rudeness with extra steps. */
+const RETRYABLE = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-  let res;
-  try {
-    res = await fetch(url, {
-      signal: ac.signal,
-      headers: { accept: 'application/json', 'user-agent': USER_AGENT, ...headers },
-    });
-  } catch (err) {
-    throw new SourceError(
-      ac.signal.aborted
-        ? `${source}: timed out after ${timeoutMs}ms`
-        : `${source}: ${err.message}`,
-      { source, cause: err, kind: 'network' },
-    );
-  } finally {
-    clearTimeout(timer);
+export function isRetryable(status) {
+  return RETRYABLE.has(status);
+}
+
+/** Honour Retry-After when the server sends one, in seconds or as a date. */
+export function retryDelayMs(res, attempt) {
+  const header = res?.headers?.get?.('retry-after');
+  if (header) {
+    const seconds = Number(header);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 30_000);
+    const when = Date.parse(header);
+    if (!Number.isNaN(when)) return Math.max(0, Math.min(when - Date.now(), 30_000));
+  }
+  return Math.min(1000 * 2 ** attempt, 8000);
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function getJson(url, { source, timeoutMs = 20_000, headers = {}, retries = 2 } = {}) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), timeoutMs);
+
+    let res;
+    try {
+      res = await fetch(url, {
+        signal: ac.signal,
+        headers: { accept: 'application/json', 'user-agent': USER_AGENT, ...headers },
+      });
+    } catch (err) {
+      lastError = new SourceError(
+        ac.signal.aborted
+          ? `${source}: timed out after ${timeoutMs}ms`
+          : `${source}: ${err.message}`,
+        { source, cause: err, kind: 'network' },
+      );
+      clearTimeout(timer);
+      if (attempt < retries) {
+        await sleep(retryDelayMs(null, attempt));
+        continue;
+      }
+      throw lastError;
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!res.ok) {
+      const err = new SourceError(
+        `${source}: HTTP ${res.status}${res.status === 429 ? ' (rate limited)' : ''}`,
+        { source, status: res.status, kind: 'http' },
+      );
+      if (isRetryable(res.status) && attempt < retries) {
+        await sleep(retryDelayMs(res, attempt));
+        lastError = err;
+        continue;
+      }
+      throw err;
+    }
+
+    try {
+      return await res.json();
+    } catch (err) {
+      throw new SourceError(`${source}: response was not JSON`, {
+        source,
+        cause: err,
+        kind: 'parse',
+      });
+    }
   }
 
-  if (!res.ok) {
-    throw new SourceError(`${source}: HTTP ${res.status}`, {
-      source,
-      status: res.status,
-      kind: 'http',
-    });
-  }
-
-  try {
-    return await res.json();
-  } catch (err) {
-    throw new SourceError(`${source}: response was not JSON`, {
-      source,
-      cause: err,
-      kind: 'parse',
-    });
-  }
+  throw lastError ?? new SourceError(`${source}: request failed`, { source, kind: 'network' });
 }

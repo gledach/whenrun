@@ -159,7 +159,7 @@ rounding error.
 ## Tests
 
 ```bash
-npm test          # the gate: 86 tests, fully offline, no network
+npm test          # the gate: 108 tests, fully offline, no network
 node test/live.mjs          # checks the real APIs still answer in the expected shape
 node test/live.mjs --update # and refreshes the captured fixtures
 ```
