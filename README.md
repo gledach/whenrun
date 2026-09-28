@@ -167,6 +167,13 @@ node test/live.mjs --update # and refreshes the captured fixtures
 Offline fixtures are captured from the live APIs rather than handwritten, so they test what
 the API does rather than what I remember it doing.
 
+## Docs
+
+- [docs/running-it.md](./docs/running-it.md) — cron, systemd, Task Scheduler, and exactly
+  when it will refuse to run something
+- [docs/roadmap.md](./docs/roadmap.md) — what works, what is missing, what is deliberately
+  not being built
+
 ## Licence
 
 MIT. See [LICENSE](./LICENSE).

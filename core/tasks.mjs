@@ -110,23 +110,37 @@ export function nextLocalTime(hhmm, from = Date.now()) {
 }
 
 /**
- * The window a task is allowed to occupy, as epoch ms.
- * `earliest` may be later in the clock than `deadline`, which is the normal
- * overnight case: 22:00 to 07:00 crosses midnight and must not be read as a
- * negative window.
+ * Most recent occurrence of a local "HH:MM" at or before `at`.
+ * Counterpart to nextLocalTime, and the piece that makes an overnight window
+ * resolve backwards from its deadline rather than forwards from now.
  */
-export function taskBounds(task, now = Date.now()) {
-  const notBefore = task.earliest ? Math.max(now, nextLocalTimeToday(task.earliest, now)) : now;
-  const notAfter = task.deadline ? nextLocalTime(task.deadline, notBefore) : now + 24 * 3600_000;
-  return { notBefore, notAfter };
+export function previousLocalTime(hhmm, at) {
+  const m = TIME_RE.exec(hhmm);
+  if (!m) throw new Error(`Not a HH:MM time: ${hhmm}`);
+  const d = new Date(at);
+  const candidate = new Date(
+    d.getFullYear(), d.getMonth(), d.getDate(), Number(m[1]), Number(m[2]), 0, 0,
+  );
+  if (candidate.getTime() > at) candidate.setDate(candidate.getDate() - 1);
+  return candidate.getTime();
 }
 
-/** Today's occurrence if it is still ahead, otherwise today's anyway: earliest is a floor, not a trigger. */
-function nextLocalTimeToday(hhmm, from) {
-  const m = TIME_RE.exec(hhmm);
-  const d = new Date(from);
-  const today = new Date(
-    d.getFullYear(), d.getMonth(), d.getDate(), Number(m[1]), Number(m[2]), 0, 0,
-  ).getTime();
-  return today;
+/**
+ * The window a task is allowed to occupy, as epoch ms.
+ *
+ * Resolved from the deadline backwards, not from now forwards. The deadline is
+ * the next time that clock reading comes round; the window opens at the most
+ * recent `earliest` at or before it.
+ *
+ * That ordering is what makes the overnight case right. A task set to
+ * 22:00 to 07:00, asked at 03:00, is already inside a window that opened last
+ * night: its deadline is 07:00 this morning and it should run now. Resolving
+ * `earliest` forwards instead gives tonight's 22:00, which pushes a backup that
+ * could have run in the next four hours nineteen hours into the future.
+ */
+export function taskBounds(task, now = Date.now()) {
+  const notAfter = task.deadline ? nextLocalTime(task.deadline, now) : now + 24 * 3600_000;
+  const opensAt = task.earliest ? previousLocalTime(task.earliest, notAfter) : -Infinity;
+  const notBefore = Math.max(now, opensAt);
+  return { notBefore, notAfter };
 }
