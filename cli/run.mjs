@@ -162,7 +162,8 @@ export async function execAndRecord(task, plan, { timeoutMinutes = null } = {}) 
     baselineSpot: plan.baselineSpotEurPerMwh,
     kw: task.kw,
     minutes: task.durationMinutes,
-    savedEur: plan.savings ? plan.savings.savedEur : 0,
+    // A process that never started used no power, so it saved nothing.
+    savedEur: result.neverStarted || !plan.savings ? 0 : plan.savings.savedEur,
     renewableSharePct: plan.renewableSharePct ?? null,
   });
   markRan(task.id);

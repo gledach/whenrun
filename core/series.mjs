@@ -179,20 +179,57 @@ export function bestSlots(slots, opts) {
     direction = 'min',
   } = opts;
 
-  const usable = slots.filter((s) => s.start >= notBefore && s.end <= notAfter);
-  if (usable.length === 0) return null;
+  /* Partial overlap, matching bestWindow and slice. Requiring strict
+     containment here meant planTask could pass its minute-count feasibility
+     check and then get null back, which was reported to the user as "no
+     unbroken window exists" -- the wrong diagnosis for a task that was
+     explicitly allowed to break up. */
+  const usable = slots
+    .filter((sl) => sl.end > notBefore && sl.start < notAfter)
+    .map((sl) => ({
+      start: Math.max(sl.start, notBefore === -Infinity ? sl.start : notBefore),
+      end: Math.min(sl.end, notAfter === Infinity ? sl.end : notAfter),
+      value: sl.value,
+    }))
+    .filter((sl) => sl.end > sl.start);
 
-  const res = resolutionMinutes(usable) || 60;
-  const need = Math.ceil(durationMinutes / res);
-  if (need > usable.length) return null;
+  if (usable.length === 0) return null;
 
   const ranked = [...usable].sort((a, b) =>
     direction === 'min' ? a.value - b.value : b.value - a.value,
   );
-  const picked = ranked.slice(0, need).sort((a, b) => a.start - b.start);
-  const mean = picked.reduce((a, s) => a + s.value, 0) / picked.length;
 
-  return { slots: picked, mean, minutes: need * res };
+  /* Take slots until the duration is covered, measuring each one's real
+     length. Using a count of modal-resolution slots misreports both the mean
+     and the runtime on a mixed series: with 15-minute and 60-minute slots
+     together it claimed 60 minutes while reserving 105, and mispriced it by
+     over 40%. */
+  const needMs = durationMinutes * MIN;
+  const picked = [];
+  let coveredMs = 0;
+  for (const sl of ranked) {
+    if (coveredMs >= needMs) break;
+    picked.push(sl);
+    coveredMs += sl.end - sl.start;
+  }
+  if (coveredMs + 1e-6 < needMs) return null;
+
+  picked.sort((a, b) => a.start - b.start);
+
+  // Time weighted, so a long cheap slot counts for more than a short one.
+  let weighted = 0;
+  let total = 0;
+  for (const sl of picked) {
+    const len = sl.end - sl.start;
+    weighted += sl.value * len;
+    total += len;
+  }
+
+  return {
+    slots: picked,
+    mean: total === 0 ? null : weighted / total,
+    minutes: total / MIN,
+  };
 }
 
 /**

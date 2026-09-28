@@ -68,11 +68,22 @@ export async function getJson(url, { source, timeoutMs = 20_000, headers = {}, r
         continue;
       }
       throw lastError;
-    } finally {
-      clearTimeout(timer);
     }
 
+    /* The timer is deliberately still armed. fetch resolves when headers
+       arrive, so clearing it here would let a server that sends headers and
+       then stalls the body hang the process forever, which in the daemon means
+       the tick loop simply stops with no log line. */
+
     if (!res.ok) {
+      clearTimeout(timer);
+      /* Discard the body so undici can release the socket rather than holding
+         it until garbage collection. */
+      try {
+        await res.body?.cancel();
+      } catch {
+        // nothing useful to do if the stream is already gone
+      }
       const err = new SourceError(
         `${source}: HTTP ${res.status}${res.status === 429 ? ' (rate limited)' : ''}`,
         { source, status: res.status, kind: 'http' },
@@ -86,13 +97,17 @@ export async function getJson(url, { source, timeoutMs = 20_000, headers = {}, r
     }
 
     try {
-      return await res.json();
+      const parsed = await res.json();
+      clearTimeout(timer);
+      return parsed;
     } catch (err) {
-      throw new SourceError(`${source}: response was not JSON`, {
-        source,
-        cause: err,
-        kind: 'parse',
-      });
+      clearTimeout(timer);
+      throw new SourceError(
+        ac.signal.aborted
+          ? `${source}: timed out reading the response body after ${timeoutMs}ms`
+          : `${source}: response was not JSON`,
+        { source, cause: err, kind: ac.signal.aborted ? 'network' : 'parse' },
+      );
     }
   }
 

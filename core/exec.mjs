@@ -50,7 +50,8 @@ export function runTask(task, { dryRun = true, timeoutMinutes = null, onLine = n
   const isStruct = typeof task.command === 'object';
   const cap = timeoutMinutes ?? Math.max(task.durationMinutes * 2, 10);
 
-  return new Promise((resolve) => {
+  const handle = {};
+  const promise = new Promise((resolve) => {
     const startedAt = Date.now();
 
     /* The task is told what it was scheduled into. A script that wants to do
@@ -88,6 +89,11 @@ export function runTask(task, { dryRun = true, timeoutMinutes = null, onLine = n
         if (line.trim()) onLine(line);
       }
     };
+    /* Held so a daemon shutting down can stop what it started. Without it a
+       forced exit leaves the command running and removes the lock, so the next
+       daemon starts alongside an orphan. */
+    handle.child = child;
+
     child.stdout?.on('data', emit);
     child.stderr?.on('data', emit);
 
@@ -96,7 +102,16 @@ export function runTask(task, { dryRun = true, timeoutMinutes = null, onLine = n
       resolve({
         dryRun: false,
         exitCode: -1,
-        error: err.message,
+        /* Distinguish "the command failed" from "no process ever existed".
+           The second consumed no power, so it must not be credited with a
+           saving. On Windows this is also the common case: shell:false cannot
+           launch a .cmd shim, which is what npm, npx, pnpm and yarn are. */
+        neverStarted: true,
+        error:
+          err.code === 'ENOENT' && isStruct
+            ? `${err.message}. The { cmd, args } form skips the shell, so on Windows it cannot ` +
+              `launch a .cmd shim such as npm, npx, pnpm or yarn. Use the string form, or cmd: 'npm.cmd'.`
+            : err.message,
         startedAt,
         endedAt: Date.now(),
         describe: describe(task),
@@ -116,6 +131,18 @@ export function runTask(task, { dryRun = true, timeoutMinutes = null, onLine = n
       });
     });
   });
+
+  promise.child = handle;
+  return promise;
+}
+
+/** Stop a run started by runTask, if it is still going. */
+export function killRun(promise) {
+  const child = promise?.child?.child;
+  if (!child || child.killed) return false;
+  child.kill('SIGTERM');
+  setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* already gone */ } }, 5000).unref?.();
+  return true;
 }
 
 /**

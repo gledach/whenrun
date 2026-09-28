@@ -19,7 +19,7 @@ export async function loadTariff() {
 
   for (const file of candidates) {
     if (!fs.existsSync(file)) continue;
-    const mod = await import(pathToFileURL(file).href);
+    const mod = await import(`${pathToFileURL(file).href}?v=${fs.statSync(file).mtimeMs}`);
     return { file, tariff: validateTariff(mod.default, file), isDefault: file.endsWith('tariff.default.mjs') };
   }
   return { file: null, tariff: DEFAULT_TARIFF, isDefault: true };

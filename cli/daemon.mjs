@@ -21,7 +21,7 @@ import { getPrices, getRenewableShare } from '../core/collect.mjs';
 import { planTask } from '../core/schedule.mjs';
 import { loadTasks } from '../core/tasks.mjs';
 import { loadTariff } from '../core/tariff.mjs';
-import { runTask, describe, planEnv, ExecRefused } from '../core/exec.mjs';
+import { runTask, describe, planEnv, killRun, ExecRefused } from '../core/exec.mjs';
 import { appendRun, markRan, lastRunAt, cacheAgeMs } from '../core/store.mjs';
 import { paths, ensureDataDir, pretty } from '../core/paths.mjs';
 import { formatEur } from '../core/money.mjs';
@@ -50,6 +50,7 @@ export default async function daemon({ flags }) {
 
   let stopping = false;
   let wake = null;
+  let running = null;
 
   /* Waiting out a full tick before noticing a signal makes Ctrl+C feel broken
      at a 60 second tick. The sleep is therefore cancellable, and a second
@@ -57,6 +58,9 @@ export default async function daemon({ flags }) {
   const stop = (sig) => {
     if (stopping) {
       log(c.red(`${sig} again, exiting now`));
+      /* Stop what we started. Exiting without this orphans the command while
+         removing the lock, so the next daemon runs alongside it. */
+      if (running && killRun(running)) log(c.dim('stopped the running task'));
       release();
       process.exit(130);
     }
@@ -71,6 +75,8 @@ export default async function daemon({ flags }) {
      next start. */
   process.on('exit', () => release());
 
+  setRunning = (p) => { running = p; };
+
   const { tariff } = await loadTariff();
 
   log(c.bold('whenrun daemon'));
@@ -81,7 +87,15 @@ export default async function daemon({ flags }) {
 
   try {
     while (!stopping) {
-      await tick({ zone, source, country, refreshMinutes, execute, tariff, flags });
+      /* Every other failure in this file logs and carries on. An unguarded
+         throw here, from a validation error or a bad source name, would end a
+         process meant to run for months. */
+      try {
+        await tick({ zone, source, country, refreshMinutes, execute, tariff, flags });
+      } catch (err) {
+        logOnce(`tick-error:${err.message}`, c.red(`tick failed: ${err.message}`));
+        if (process.env.WHENRUN_DEBUG) console.error(err.stack);
+      }
       if (once || stopping) break;
       await new Promise((resolve) => {
         const timer = setTimeout(resolve, tickMs);
@@ -126,6 +140,10 @@ async function tick({ zone, source, country, refreshMinutes, execute, tariff, fl
 
   for (const task of enabled) {
     const plan = planTask(task, { prices, renewable: ren.series, now, tariff, weight: num(flags.weight, 0.5) });
+
+    if (plan.degraded) {
+      logOnce(`degraded:${task.id}:${dayKey(now)}`, c.yellow(`${task.id}: ${plan.degradedReason}`));
+    }
 
     if (!plan.feasible) {
       logOnce(`infeasible:${task.id}:${dayKey(now)}`, c.yellow(`${task.id}: ${plan.problem}`));
@@ -176,17 +194,21 @@ async function tick({ zone, source, country, refreshMinutes, execute, tariff, fl
   }
 }
 
+let setRunning = () => {};
+
 async function execute1(task, plan) {
   log(`${c.bold(task.id)} ${c.cyan('starting')} ${c.dim(describe(task))}`);
   const started = Date.now();
 
   let result;
   try {
-    result = await runTask(task, {
+    const pending = runTask(task, {
       dryRun: false,
       onLine: (line) => log(c.dim(`  | ${line}`)),
       env: planEnv(task, plan),
     });
+    setRunning(pending);
+    result = await pending;
   } catch (err) {
     if (err instanceof ExecRefused) {
       log(c.red(`${task.id}: ${err.message}`));
@@ -209,10 +231,12 @@ async function execute1(task, plan) {
     plannedStart: plan.window.start, plannedEnd: plan.window.end,
     spotEurPerMwh: plan.spotEurPerMwh, baselineSpot: plan.baselineSpotEurPerMwh,
     kw: task.kw, minutes: task.durationMinutes,
-    savedEur: plan.savings ? plan.savings.savedEur : 0,
+    // A process that never started used no power, so it saved nothing.
+    savedEur: result.neverStarted || !plan.savings ? 0 : plan.savings.savedEur,
     renewableSharePct: plan.renewableSharePct ?? null,
   });
   markRan(task.id);
+  setRunning(null);
 }
 
 /* A task's cycle is the stretch its deadline defines. Comparing against the

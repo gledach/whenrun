@@ -123,6 +123,7 @@ function renderPlan(p, now) {
 
   const badge = p.enabled ? c.green('enabled') : c.dim('disabled');
   console.log(`${head}  ${badge}  ${c.dim(p.objective)}`);
+  if (p.degraded) console.log(`    ${c.yellow('!')} ${c.dim(p.degradedReason)}`);
 
   const rows = [];
   rows.push([

@@ -202,6 +202,12 @@ export function planTask(task, ctx) {
 
   const renShare = renewable ? meanOver(renewable.slots, chosen.start, chosen.end) : null;
 
+  /* An objective that needs renewable data and did not get it has quietly
+     become a cheapest plan. It still prints "greenest" as its objective, so
+     without this the downgrade is invisible at exactly the moment it matters. */
+  const degraded =
+    (task.objective === 'greenest' || task.objective === 'balanced') && !renewable;
+
   return {
     ...base,
     feasible: true,
@@ -211,6 +217,10 @@ export function planTask(task, ctx) {
       end: chosen.end,
       scattered: scatteredWindows,
     },
+    degraded,
+    degradedReason: degraded
+      ? `no renewable forecast available, so "${task.objective}" fell back to cheapest`
+      : null,
     spotEurPerMwh: spot,
     /* Present only for interruptible tasks: what the scattered slots would have
        averaged if a script honoured WHENRUN_SLOTS. Shown as a possibility,

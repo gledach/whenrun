@@ -125,3 +125,75 @@ test('a plan is refused when prices cannot cover the window it picked', () => {
   const plan = planTask(task({ durationMinutes: 60 }), { prices: prices([]), now: T0 });
   assert.equal(plan.feasible, false);
 });
+
+/* ── bestSlots on a mixed-resolution series ──────────────────────────────── */
+
+test('bestSlots time-weights and reports the duration it really reserves', async () => {
+  const { bestSlots, MIN } = await import('../core/series.mjs');
+  // One 60-minute slot and three 15-minute ones. Counting modal-resolution
+  // slots claimed 60 minutes while reserving 105, and mispriced by over 40%.
+  const slots = [
+    { start: 0, end: 60 * MIN, value: 0.5 },
+    { start: 60 * MIN, end: 75 * MIN, value: 1 },
+    { start: 75 * MIN, end: 90 * MIN, value: 2 },
+    { start: 90 * MIN, end: 105 * MIN, value: 3 },
+  ];
+  const got = bestSlots(slots, { durationMinutes: 60 });
+
+  assert.equal(got.minutes, 60, 'the cheapest 60 minutes is the single long slot');
+  assert.equal(got.slots.length, 1);
+  assert.equal(got.mean, 0.5, 'and it is not averaged against slots it did not take');
+});
+
+test('bestSlots accepts a slot that straddles the boundary, as bestWindow does', async () => {
+  const { bestSlots, MIN } = await import('../core/series.mjs');
+  const slots = [
+    { start: 0, end: 60 * MIN, value: 1 },
+    { start: 60 * MIN, end: 120 * MIN, value: 2 },
+  ];
+  // notBefore falls inside the first slot. Strict containment used to drop it,
+  // so a task could pass the feasibility check and then be told no window
+  // existed, which is the wrong diagnosis for a splittable job.
+  const got = bestSlots(slots, { durationMinutes: 60, notBefore: 30 * MIN });
+  assert.ok(got, 'a partially available slot is still usable');
+  assert.equal(got.slots[0].start, 30 * MIN, 'and it is clipped to the boundary, not dropped');
+
+  // Slots are taken whole, so covering 60 minutes out of a 30-minute remainder
+  // plus a full hour genuinely reserves 90. Reporting that rather than the
+  // requested 60 is the point: the old code claimed the duration it was asked
+  // for regardless of what it actually held.
+  assert.equal(got.minutes, 90);
+  assert.ok(got.minutes >= 60, 'never less than the job needs');
+});
+
+/* ── an objective that lost its data must say so ─────────────────────────── */
+
+test('greenest without a forecast reports the downgrade instead of hiding it', () => {
+  const plan = planTask(task({ objective: 'greenest' }), {
+    prices: prices([300, 40, 500]),
+    renewable: null,
+    now: T0,
+  });
+  assert.equal(plan.feasible, true);
+  assert.equal(plan.degraded, true, 'it silently became a cheapest plan and must admit it');
+  assert.match(plan.degradedReason, /fell back to cheapest/);
+  assert.equal(plan.objective, 'greenest', 'while still reporting what was asked for');
+});
+
+test('greenest with a forecast is not flagged as degraded', () => {
+  const renewable = makeSeries({
+    kind: 'renewable-share', unit: '%', zone: 'DE', source: 't',
+    slots: [0, 1, 2].map((i) => ({ start: T0 + i * HOUR, end: T0 + (i + 1) * HOUR, value: 50 + i })),
+  });
+  const plan = planTask(task({ objective: 'greenest' }), {
+    prices: prices([300, 40, 500]), renewable, now: T0,
+  });
+  assert.equal(plan.degraded, false);
+});
+
+test('a cheapest plan is never flagged as degraded, forecast or not', () => {
+  const plan = planTask(task({ objective: 'cheapest' }), {
+    prices: prices([300, 40]), renewable: null, now: T0,
+  });
+  assert.equal(plan.degraded, false, 'cheapest never needed the forecast');
+});

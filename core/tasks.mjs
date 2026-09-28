@@ -24,7 +24,13 @@ export async function loadTasks() {
 
   for (const file of candidates) {
     if (!fs.existsSync(file)) continue;
-    const mod = await import(pathToFileURL(file).href);
+    /* ESM caches module records per URL for the life of the process, so the
+       daemon calling this every tick read the disk exactly once, at the first
+       tick. Enabling a task or fixing a deadline had no effect until a
+       restart, silently. The mtime in the query string makes an edited file a
+       different URL. */
+    const stamp = fs.statSync(file).mtimeMs;
+    const mod = await import(`${pathToFileURL(file).href}?v=${stamp}`);
     const list = mod.default;
     if (!Array.isArray(list)) {
       throw new Error(`${file}: default export must be an array of tasks`);

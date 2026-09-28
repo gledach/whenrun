@@ -317,8 +317,17 @@ async function drain() {
     }
   } finally {
     draining = false;
-    if (stdinEnded && queue.length === 0) process.exit(0);
+    if (stdinEnded && queue.length === 0) finish();
   }
+}
+
+/* process.exit truncates anything still buffered, and writes to a pipe are
+   asynchronous on every platform and non-blocking on Windows. Setting the code
+   and letting the loop drain naturally is the only way the last response
+   reliably arrives, which is the very failure the queue above exists to stop. */
+function finish() {
+  process.exitCode = 0;
+  process.stdin.pause();
 }
 
 process.stdin.setEncoding('utf8');
@@ -340,6 +349,6 @@ process.stdin.on('data', (chunk) => {
 
 process.stdin.on('end', () => {
   stdinEnded = true;
-  if (!draining && queue.length === 0) process.exit(0);
-  drain();
+  if (!draining && queue.length === 0) finish();
+  else drain();
 });
