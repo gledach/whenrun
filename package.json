@@ -1,0 +1,46 @@
+{
+  "name": "whenrun",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Run it when the power is cheap. Watches day-ahead electricity prices and renewable share, then schedules your jobs into the cheapest or greenest window. Zero dependencies, no account, runs on your machine.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "whenrun": "./bin/whenrun.mjs"
+  },
+  "scripts": {
+    "help": "node bin/whenrun.mjs help",
+    "prices": "node bin/whenrun.mjs prices",
+    "plan": "node bin/whenrun.mjs plan",
+    "run": "node bin/whenrun.mjs run",
+    "daemon": "node bin/whenrun.mjs daemon",
+    "report": "node bin/whenrun.mjs report",
+    "doctor": "node bin/whenrun.mjs doctor",
+    "tasks": "node bin/whenrun.mjs tasks",
+    "mcp": "node mcp-server.mjs",
+    "test": "node test/run.mjs",
+    "smoke": "node test/smoke.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gledach/whenrun.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gledach/whenrun/issues"
+  },
+  "homepage": "https://github.com/gledach/whenrun#readme",
+  "keywords": [
+    "electricity",
+    "day-ahead",
+    "epex",
+    "dynamic-tariff",
+    "load-shifting",
+    "scheduler",
+    "carbon-intensity",
+    "mcp",
+    "cli"
+  ]
+}

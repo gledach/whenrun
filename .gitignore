@@ -1,0 +1,15 @@
+# Your configuration. Both are yours, neither belongs upstream.
+config/tasks.local.mjs
+config/tariff.local.mjs
+
+# Runtime: price cache, run ledger, daemon lock.
+data/
+
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# There is no build step, so nothing here is generated.
+node_modules/
