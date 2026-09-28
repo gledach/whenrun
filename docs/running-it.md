@@ -32,6 +32,12 @@ node bin/whenrun.mjs daemon        # dry run, prints what it would have done
 
 Only once the windows it picks look sane should anything get `enabled: true`.
 
+A note on times before you write any: **`earliest` and `deadline` are a 24-hour clock in
+your local timezone**, written `HH:MM`. `19:00` is the evening, `07:00` is the morning, and
+`7:00` is refused rather than guessed at. The clock on your wall is the one that matters,
+which is also why a deadline stays at the same wall-clock time across a daylight-saving
+change even though the night is an hour shorter or longer.
+
 ## 1. Cron or Task Scheduler, one pass at a time
 
 The least trusting option, and the one to prefer if you already have a scheduler you

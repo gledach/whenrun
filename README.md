@@ -111,6 +111,11 @@ A task looks like this:
 }
 ```
 
+**Times are a 24-hour clock in your local timezone**, written `HH:MM`. So `19:00` is the
+evening and `07:00` is the morning. There is no am or pm, and the leading zero is required:
+`7:00` is refused rather than guessed at. Everything the tool prints back uses the same
+clock.
+
 Your task is told what it was scheduled into, through the environment:
 `WHENRUN_WINDOW_START`, `WHENRUN_WINDOW_END`, `WHENRUN_SPOT_EUR_MWH`,
 `WHENRUN_RENEWABLE_PCT`, `WHENRUN_SLOTS`.

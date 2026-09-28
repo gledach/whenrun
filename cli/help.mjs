@@ -58,6 +58,16 @@ ${b('WHERE YOU ARE')}
   then edit the copy, which is gitignored. ${b('whenrun where')} lists every zone.
   For one command only, pass ${b('--zone=AT')}.
 
+${b('TELLING IT THE TIME')}
+
+  All times are a ${b('24-hour clock')} in your local timezone, written ${b('HH:MM')}.
+
+    07:00   ${d('seven in the morning')}
+    19:00   ${d('seven in the evening')}
+
+  There is no am or pm. The leading zero is required, so ${b('7:00')} is refused
+  rather than guessed at. Everything printed back to you uses the same clock.
+
 ${b('GLOBAL FLAGS')}
 
   --zone=DE-LU          Bidding zone for this command only

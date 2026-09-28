@@ -16,11 +16,16 @@
  *   cwd               working directory, relative to the repo root
  *   durationMinutes   how long it takes. Be generous: the window is reserved
  *   kw                average power draw while running. Used for cost only
- *   earliest          "HH:MM" local, optional. Not before this
- *   deadline          "HH:MM" local. Must be finished by this
+ *   earliest          "HH:MM", optional. Not before this
+ *   deadline          "HH:MM". Must be finished by this
  *   interruptible     true if it can run in scattered slots rather than one block
  *   objective         "cheapest" | "greenest" | "balanced"
  *   enabled           false means plan it, never run it
+ *
+ * TIMES ARE A 24-HOUR CLOCK, IN YOUR LOCAL TIMEZONE.
+ * So 19:00 is the evening and 07:00 is the morning. There is no am or pm, and
+ * "7:00" is refused rather than guessed at: the leading zero is required.
+ * Everything this tool prints back to you uses the same 24-hour clock.
  */
 
 export default [

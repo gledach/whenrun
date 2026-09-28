@@ -197,3 +197,38 @@ test('a cheapest plan is never flagged as degraded, forecast or not', () => {
   });
   assert.equal(plan.degraded, false, 'cheapest never needed the forecast');
 });
+
+/* ── every time this tool prints uses a 24-hour clock ────────────────────── */
+
+test('times render as 24-hour whatever the system locale would prefer', async () => {
+  const { hhmm } = await import('../core/format.mjs');
+  // 19:30 local. A 12-hour locale would render this "7:30 PM".
+  const evening = new Date(2027, 0, 15, 19, 30).getTime();
+  assert.equal(hhmm(evening), '19:30');
+
+  const morning = new Date(2027, 0, 15, 7, 5).getTime();
+  assert.equal(hhmm(morning), '07:05', 'and the leading zero is kept');
+
+  const midnight = new Date(2027, 0, 15, 0, 0).getTime();
+  assert.equal(hhmm(midnight), '00:00', 'midnight is 00:00, never 12:00 AM');
+});
+
+test('the refusal message is 24-hour too, not toLocaleString', () => {
+  // This one message used to use toLocaleString, which renders "7:00:00 AM" on
+  // a US locale while every other time in the tool printed 07:00.
+  const plan = planTask(task({ durationMinutes: 600, deadline: '07:00' }), {
+    prices: prices([100, 100]),
+    now: T0,
+  });
+  assert.equal(plan.feasible, false);
+  assert.doesNotMatch(plan.problem, /\bAM\b|\bPM\b/, 'no am or pm anywhere in the output');
+  assert.match(plan.problem, /\d{2}:\d{2}/, 'and a zero-padded 24-hour time instead');
+});
+
+test('a time without its leading zero is refused rather than guessed at', () => {
+  assert.throws(
+    () => task({ deadline: '7:00' }),
+    /HH:MM/,
+    '"7:00" is ambiguous between 07:00 and 19:00, so it is not accepted',
+  );
+});

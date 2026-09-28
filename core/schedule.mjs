@@ -54,6 +54,16 @@ export function blend(priceSlots, renSlots, weight = 0.5) {
   });
 }
 
+/* Deterministic 24-hour stamp. toLocaleString here rendered "1/15/2027,
+   7:00:00 AM" on a US locale while every other time this tool prints comes
+   from the 24-hour formatter, so one refusal message disagreed with the whole
+   rest of the output about what o'clock means. */
+function stamp(ms) {
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}. ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 /** Mean value of a series across a window, time weighted. */
 export function meanOver(slots, start, end) {
   const covering = slice(slots, start, end);
@@ -116,7 +126,7 @@ export function planTask(task, ctx) {
       ...base,
       feasible: false,
       problem:
-        `needs ${task.durationMinutes} min before ${new Date(notAfter).toLocaleString()}, ` +
+        `needs ${task.durationMinutes} min before ${stamp(notAfter)}, ` +
         `but only ${Math.floor(haveMinutes)} min of published prices cover that window`,
     };
   }
