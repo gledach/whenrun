@@ -38,7 +38,14 @@ function pairsToSlots(unixSeconds, values) {
     const value = values[i];
     if (value === null || value === undefined || !Number.isFinite(value)) continue;
     const start = unixSeconds[i] * 1000;
-    const end = i + 1 < n ? unixSeconds[i + 1] * 1000 : start + modalGap;
+    /* Clamp to one interval. Taking the next published timestamp as the end
+       silently stretches a slot across any interval upstream skipped, inventing
+       a price for hours the market never cleared. That defeats the whole
+       "return null rather than span a gap" contract in core/series.mjs: the
+       gap disappears, isContiguous reports true, and a job gets scheduled
+       across it. A real hole must stay a hole. */
+    const next = i + 1 < n ? unixSeconds[i + 1] * 1000 : start + modalGap;
+    const end = Math.min(next, start + modalGap);
     slots.push({ start, end, value });
   }
   return slots;

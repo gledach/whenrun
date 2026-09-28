@@ -153,7 +153,7 @@ function renderPlan(p, now) {
     rows.push([
       'saving',
       `${tone(s.savedEur)(formatEur(s.savedEur))} ${c.dim(`(${s.savedPctOfBill.toFixed(1)}% of this job's bill)`)}`,
-      c.dim(`${s.savedPctOfSpot.toFixed(0)}% of its energy component`),
+      c.dim(s.savedPctOfSpot === null ? '' : `${s.savedPctOfSpot.toFixed(0)}% of its energy component`),
     ]);
   }
 

@@ -121,49 +121,27 @@ export function planTask(task, ctx) {
     };
   }
 
-  // Pick the window.
-  let chosen = null;
-  let scattered = null;
+  /* The window is always contiguous, for every task.
+     This tool starts a command and cannot pause one, so a scattered plan is
+     not something it can deliver. Choosing scattered slots and then pricing a
+     straight-through run reported a saving the operator could never earn;
+     choosing scattered and pricing scattered reported one the tool could never
+     produce. Both were wrong in the same direction: flattering.
 
-  if (task.interruptible) {
-    const scoreSlots =
-      task.objective === 'cheapest'
-        ? available
-        : blend(available, renewable?.slots, task.objective === 'greenest' ? 0 : weight);
-    const direction = task.objective === 'cheapest' ? 'min' : 'max';
-    scattered = bestSlots(scoreSlots, {
-      durationMinutes: task.durationMinutes,
-      notBefore,
-      notAfter,
-      direction,
-    });
-    if (scattered) {
-      chosen = {
-        start: scattered.slots[0].start,
-        end: scattered.slots[scattered.slots.length - 1].end,
-        scattered: scattered.slots.map((s) => ({ start: s.start, end: s.end })),
-      };
-    }
-  } else if (task.objective === 'cheapest') {
-    chosen = bestWindow(available, {
-      durationMinutes: task.durationMinutes,
-      notBefore,
-      notAfter,
-      direction: 'min',
-    });
-  } else {
-    const scoreSlots = blend(
-      available,
-      renewable?.slots,
-      task.objective === 'greenest' ? 0 : weight,
-    );
-    chosen = bestWindow(scoreSlots, {
-      durationMinutes: task.durationMinutes,
-      notBefore,
-      notAfter,
-      direction: 'max',
-    });
-  }
+     So: pick the block that will actually run, and for an interruptible task
+     also work out the scattered optimum and hand it over as advice, in
+     WHENRUN_SLOTS, for a script that can act on it. */
+  const scoreSlots =
+    task.objective === 'cheapest'
+      ? available
+      : blend(available, renewable?.slots, task.objective === 'greenest' ? 0 : weight);
+
+  const chosen = bestWindow(scoreSlots, {
+    durationMinutes: task.durationMinutes,
+    notBefore,
+    notAfter,
+    direction: task.objective === 'cheapest' ? 'min' : 'max',
+  });
 
   if (!chosen) {
     return {
@@ -173,11 +151,29 @@ export function planTask(task, ctx) {
     };
   }
 
-  // Score the chosen window against the real price series, whatever objective
-  // selected it. A greenest window still has a price and you still pay it.
-  const spot = task.interruptible
-    ? meanOverSlots(available, chosen.scattered)
-    : meanOver(available, chosen.start, chosen.end);
+  // Advisory only, and only when the task says it can be split.
+  const scattered = task.interruptible
+    ? bestSlots(scoreSlots, {
+        durationMinutes: task.durationMinutes,
+        notBefore,
+        notAfter,
+        direction: task.objective === 'cheapest' ? 'min' : 'max',
+      })
+    : null;
+  const scatteredWindows = scattered
+    ? scattered.slots.map((sl) => ({ start: sl.start, end: sl.end }))
+    : null;
+  const scatteredSpot = scatteredWindows ? meanOverSlots(available, scatteredWindows) : null;
+
+  // Money always follows the block that will actually run.
+  const spot = meanOver(available, chosen.start, chosen.end);
+  if (spot === null || !Number.isFinite(spot)) {
+    return {
+      ...base,
+      feasible: false,
+      problem: 'prices do not cover the chosen window, so it cannot be priced',
+    };
+  }
 
   const baselineWindow = bestWindow(prices.slots, {
     durationMinutes: task.durationMinutes,
@@ -204,11 +200,7 @@ export function planTask(task, ctx) {
           tariff,
         );
 
-  const renShare = renewable
-    ? task.interruptible
-      ? meanOverSlots(renewable.slots, chosen.scattered)
-      : meanOver(renewable.slots, chosen.start, chosen.end)
-    : null;
+  const renShare = renewable ? meanOver(renewable.slots, chosen.start, chosen.end) : null;
 
   return {
     ...base,
@@ -217,9 +209,13 @@ export function planTask(task, ctx) {
     window: {
       start: chosen.start,
       end: chosen.end,
-      scattered: chosen.scattered ?? null,
+      scattered: scatteredWindows,
     },
     spotEurPerMwh: spot,
+    /* Present only for interruptible tasks: what the scattered slots would have
+       averaged if a script honoured WHENRUN_SLOTS. Shown as a possibility,
+       never used for the ledger. */
+    scatteredSpotEurPerMwh: scatteredSpot,
     baselineSpotEurPerMwh: baselineSpot,
     renewableSharePct: renShare,
     cost,

@@ -82,14 +82,24 @@ test('greenest degrades to cheapest when no renewable data exists', () => {
   assert.equal(plan.renewableSharePct, null, 'and it must not invent a share it does not have');
 });
 
-test('an interruptible task may scatter across non-adjacent hours', () => {
+test('an interruptible task gets the scattered optimum as advice, priced as a block', () => {
   const prices = priceSeries([10, 900, 900, 20]);
   const plan = planTask(
     task({ durationMinutes: 120, interruptible: true }),
     { prices, now: T0 },
   );
-  assert.equal(plan.window.scattered.length, 2);
-  assert.equal(plan.spotEurPerMwh, 15, 'mean of the two cheapest hours');
+
+  assert.equal(plan.window.scattered.length, 2, 'the cheap hours are identified');
+  assert.equal(plan.scatteredSpotEurPerMwh, 15, 'and what they would average is reported');
+
+  // The tool starts a command and cannot pause one, so the money must describe
+  // the straight-through run it will actually perform. Billing the scattered
+  // figure would promise a saving that no script honoured WHENRUN_SLOTS to earn.
+  assert.equal(plan.spotEurPerMwh, 455, 'priced as the contiguous block it will really run');
+  assert.ok(
+    plan.spotEurPerMwh > plan.scatteredSpotEurPerMwh,
+    'the advisory figure must never be the one charged for',
+  );
 });
 
 test('a non-interruptible task of the same length must stay contiguous', () => {

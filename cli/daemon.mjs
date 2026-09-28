@@ -217,12 +217,26 @@ async function execute1(task, plan) {
 
 /* A task's cycle is the stretch its deadline defines. Comparing against the
    deadline rather than the calendar day is what makes an overnight job that
-   finishes at 05:00 count as "already ran" for the cycle ending that morning. */
+   finishes at 05:00 count as "already ran" for the cycle ending that morning.
+
+   Without a deadline, taskBounds sets notAfter to now + 24h, so the old
+   `notAfter - 24h` was exactly `now` and `last >= now` was false forever. The
+   guard never fired and the task relaunched on every single tick: a 45-minute
+   backup started dozens of times in overlapping processes, each one booking
+   its full saving into the ledger. A missing deadline now means one run per
+   local day, which is a policy rather than an accident. */
 function alreadyRanThisCycle(task, plan, now) {
   const last = lastRunAt(task.id);
   if (!last) return false;
-  const cycleStart = plan.notAfter - 24 * 3600_000;
+  const cycleStart = task.deadline
+    ? plan.notAfter - 24 * 3600_000
+    : startOfLocalDay(now);
   return last >= cycleStart;
+}
+
+function startOfLocalDay(ms) {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime();
 }
 
 const seen = new Set();

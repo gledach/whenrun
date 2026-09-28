@@ -15,6 +15,19 @@ export function eurPerMwhToCentPerKwh(eurPerMwh) {
   return eurPerMwh / 10;
 }
 
+/* `null / 10` is 0 in JavaScript, not NaN. Without this guard a missing spot
+   price prices energy at exactly zero and then reports, with total confidence,
+   that you saved 100% of the energy component. tariff.mjs guards every one of
+   its fields for the same reason; the spot price had no such guard. */
+function requireSpot(value, where) {
+  if (!Number.isFinite(value)) {
+    throw new TypeError(
+      `${where}: spot price must be a finite number, got ${JSON.stringify(value)}`,
+    );
+  }
+  return value;
+}
+
 export const DEFAULT_TARIFF = {
   /* Supplier markup on top of spot, ct/kWh net. Dynamic tariffs in Germany
      typically sit somewhere near this. Yours is on your contract. */
@@ -39,6 +52,7 @@ export const DEFAULT_TARIFF = {
  * @returns {number} cents per kWh, VAT included
  */
 export function deliveredCentPerKwh(spotEurPerMwh, tariff = DEFAULT_TARIFF) {
+  requireSpot(spotEurPerMwh, 'deliveredCentPerKwh');
   const net =
     eurPerMwhToCentPerKwh(spotEurPerMwh) +
     (tariff.markupCentPerKwh ?? 0) +
@@ -52,6 +66,7 @@ export function deliveredCentPerKwh(spotEurPerMwh, tariff = DEFAULT_TARIFF) {
  * @returns {{ kwh: number, centPerKwh: number, eur: number, spotShareEur: number }}
  */
 export function jobCost({ spotEurPerMwh, kw, minutes }, tariff = DEFAULT_TARIFF) {
+  requireSpot(spotEurPerMwh, 'jobCost');
   const kwh = kw * (minutes / 60);
   const centPerKwh = deliveredCentPerKwh(spotEurPerMwh, tariff);
   const spotShare =
@@ -81,8 +96,12 @@ export function saving({ fromSpot, toSpot, kw, minutes }, tariff = DEFAULT_TARIF
     afterEur: after.eur,
     savedEur: eur,
     savedPctOfBill: before.eur === 0 ? 0 : (eur / before.eur) * 100,
+    /* Negative day-ahead prices are routine in DE-LU and were hit during
+       testing in AT. A negative denominator here turns a real saving into
+       "-900% of its energy component", so the share is only meaningful when
+       the baseline energy component was actually positive. */
     savedPctOfSpot:
-      before.spotShareEur === 0 ? 0 : (eur / before.spotShareEur) * 100,
+      before.spotShareEur > 0 ? (eur / before.spotShareEur) * 100 : null,
     kwh: before.kwh,
   };
 }

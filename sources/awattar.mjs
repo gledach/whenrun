@@ -13,6 +13,15 @@ import { makeSeries } from '../core/series.mjs';
 
 const HOSTS = { DE: 'https://api.awattar.de', AT: 'https://api.awattar.at' };
 
+/* The rest of the tool speaks bidding zones, where Germany is DE-LU. aWATTar
+   speaks countries. Without this the default zone produced "no data has ever
+   been collected", which blames the cache for a naming mismatch. */
+const ZONE_ALIASES = { 'DE-LU': 'DE', DE: 'DE', AT: 'AT' };
+
+export function normaliseZone(zone) {
+  return ZONE_ALIASES[String(zone ?? '').trim().toUpperCase()] ?? null;
+}
+
 export const id = 'awattar';
 export const label = 'aWATTar market data';
 export const needsKey = false;
@@ -25,7 +34,7 @@ export const attribution = 'Market data from aWATTar';
  * bare endpoint stops at the end of today.
  */
 export function priceUrl({ zone = 'DE', now = Date.now() } = {}) {
-  const host = HOSTS[zone.toUpperCase()];
+  const host = HOSTS[normaliseZone(zone)];
   if (!host) return null;
   return `${host}/v1/marketdata?start=${Math.floor(now)}`;
 }
@@ -65,5 +74,5 @@ export async function fetchPrices({ zone = 'DE', fixture = null, now = Date.now(
     });
   }
 
-  return makeSeries({ kind: 'price', unit, zone: zone.toUpperCase(), source: id, slots });
+  return makeSeries({ kind: 'price', unit, zone: normaliseZone(zone), source: id, slots });
 }
