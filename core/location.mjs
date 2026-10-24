@@ -98,7 +98,7 @@ export async function loadLocation(flags = {}) {
   const zone = findZone(rawZone);
   if (!zone) {
     throw new Error(
-      `Unknown bidding zone "${rawZone}". Run \`whenrun where\` for the list. ` +
+      `Unknown bidding zone "${rawZone}". Run \`gledach-whenrun where\` for the list. ` +
         'Note a zone is not a country: Germany is DE-LU, Denmark is DK1 or DK2.',
     );
   }

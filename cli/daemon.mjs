@@ -44,7 +44,7 @@ export default async function daemon({ flags }) {
   ensureDataDir();
   const release = acquireLock();
   if (!release) {
-    console.error(`Another whenrun daemon holds ${pretty(paths.lock)}. Stop it first, or delete the file if it is stale.`);
+    console.error(`Another gledach-whenrun daemon holds ${pretty(paths.lock)}. Stop it first, or delete the file if it is stale.`);
     return 1;
   }
 
@@ -79,7 +79,7 @@ export default async function daemon({ flags }) {
 
   const { tariff } = await loadTariff();
 
-  log(c.bold('whenrun daemon'));
+  log(c.bold('gledach-whenrun daemon'));
   log(
     `mode ${execute ? c.green('execute') : c.yellow('dry run')} · zone ${zone} · source ${source} · tick ${Math.round(tickMs / 1000)}s`,
   );

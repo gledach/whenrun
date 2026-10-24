@@ -1,5 +1,5 @@
 {
-  "name": "whenrun",
+  "name": "gledach-whenrun",
   "version": "0.1.0",
   "private": false,
   "description": "Run it when the power is cheap. Watches day-ahead electricity prices and renewable share, then schedules your jobs into the cheapest or greenest window. Zero dependencies, no account, runs on your machine.",
@@ -9,7 +9,7 @@
     "node": ">=22.0.0"
   },
   "bin": {
-    "whenrun": "./bin/whenrun.mjs"
+    "gledach-whenrun": "./bin/whenrun.mjs"
   },
   "scripts": {
     "help": "node bin/whenrun.mjs help",

@@ -35,7 +35,7 @@ export default async function doctor({ flags }) {
   };
 
   console.log('');
-  console.log(c.bold('whenrun doctor'));
+  console.log(c.bold('gledach-whenrun doctor'));
   console.log('');
 
   // ── runtime ──

@@ -16,10 +16,15 @@ node bin/whenrun.mjs prices
 That works on a fresh clone with nothing installed. There is no `npm install` because there
 is nothing to install.
 
+The command is `gledach-whenrun`. `npm link` in this clone puts that name on your PATH.
+The line above calls the same file and needs no link. Nothing named `whenrun` is installed.
+The package name is `gledach-whenrun`. Shelf commands share that prefix so none of them
+takes a name another tool already published.
+
 ## Why this is worth doing
 
 German power prices move by a factor of three or more within a single day. These are real
-figures from one evening, captured by `whenrun prices`:
+figures from one evening, captured by `gledach-whenrun prices`:
 
 ```
   today     ▄                          176 EUR/MWh  (1h left)
@@ -43,7 +48,7 @@ Ships set to **82319 Starnberg**, bidding zone **DE-LU**. To see that and every 
 supports:
 
 ```bash
-whenrun where
+gledach-whenrun where
 ```
 
 To change it for good:
@@ -68,17 +73,17 @@ than by bidding zone and are still modelled as flat, which is
 ## What it does
 
 ```bash
-whenrun prices                                      # today and tomorrow, with cheap windows
-whenrun plan --duration=45m --kw=2 --by=07:00       # when should this run, what will it cost
-whenrun plan --duration=2h --kw=11 --objective=greenest
-whenrun plan                                        # every task in your config
-whenrun run --task=backup                           # dry run
-whenrun run --task=backup --execute                 # wait for the window, then run it
-whenrun daemon --execute                            # all enabled tasks, continuously
-whenrun daemon --once --execute                     # one pass, for cron or Task Scheduler
-whenrun report                                      # what it actually saved
-whenrun where                                       # your location and every zone
-whenrun doctor                                      # config, connectivity, data freshness
+gledach-whenrun prices                                      # today and tomorrow, with cheap windows
+gledach-whenrun plan --duration=45m --kw=2 --by=07:00       # when should this run, what will it cost
+gledach-whenrun plan --duration=2h --kw=11 --objective=greenest
+gledach-whenrun plan                                        # every task in your config
+gledach-whenrun run --task=backup                           # dry run
+gledach-whenrun run --task=backup --execute                 # wait for the window, then run it
+gledach-whenrun daemon --execute                            # all enabled tasks, continuously
+gledach-whenrun daemon --once --execute                     # one pass, for cron or Task Scheduler
+gledach-whenrun report                                      # what it actually saved
+gledach-whenrun where                                       # your location and every zone
+gledach-whenrun doctor                                      # config, connectivity, data freshness
 ```
 
 Three objectives: `cheapest` minimises price, `greenest` maximises renewable share, and
@@ -148,7 +153,7 @@ which:
 saving   0.04 EUR (31.5% of this job's bill)   11% of its energy component
 ```
 
-The flattering number is always the one labelled as the energy component. `whenrun report`
+The flattering number is always the one labelled as the energy component. `gledach-whenrun report`
 also prints your standing charge for the period, because no amount of load shifting changes
 it and a savings figure without that context flatters the tool.
 

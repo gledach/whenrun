@@ -66,7 +66,7 @@ test('a bad zone fails with a message that helps rather than a stack trace', asy
     () => loadLocation({ zone: 'Bavaria' }),
     (err) => {
       assert.match(err.message, /Unknown bidding zone "Bavaria"/);
-      assert.match(err.message, /whenrun where/, 'it should say where to look');
+      assert.match(err.message, /gledach-whenrun where/, 'it should say where to look');
       assert.match(err.message, /not a country/, 'and name the actual confusion');
       return true;
     },

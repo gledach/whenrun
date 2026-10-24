@@ -8,7 +8,7 @@
  * upstream forever without a conflict. If you would rather your postcode were
  * not in a published repository, that copy is the place for it.
  *
- * Run `whenrun where` to see every zone this supports and which one is active.
+ * Run `gledach-whenrun where` to see every zone this supports and which one is active.
  *
  * FIELDS
  *   postcode The postal code you are in. Not used to fetch anything today: it
@@ -18,7 +18,7 @@
  *
  *   zone     The electricity bidding zone your prices come from. Not the same
  *            as a country: Germany and Luxembourg share one zone, Denmark has
- *            two, Italy and Norway have several. `whenrun where` lists them.
+ *            two, Italy and Norway have several. `gledach-whenrun where` lists them.
  *
  *   country  Used for the renewable-share forecast, which is published per
  *            country rather than per bidding zone. Leave it unset and it is

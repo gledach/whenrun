@@ -5,7 +5,7 @@ export default function help() {
   const d = c.dim;
 
   console.log(`
-${b('whenrun')} ${d('· run it when the power is cheap')}
+${b('gledach-whenrun')} ${d('· run it when the power is cheap')}
 
 Watches day-ahead electricity prices and the renewable share forecast, then puts
 your jobs in the cheapest or greenest window that still meets their deadline.
@@ -25,16 +25,16 @@ ${b('COMMANDS')}
 ${b('QUICK START')}
 
   ${d('# what does power cost today')}
-  whenrun prices
+  gledach-whenrun prices
 
   ${d('# when should a 45-minute, 2 kW job run before 07:00')}
-  whenrun plan --duration=45m --kw=2 --by=07:00
+  gledach-whenrun plan --duration=45m --kw=2 --by=07:00
 
   ${d('# same question, but greenest rather than cheapest')}
-  whenrun plan --duration=2h --kw=11 --by=06:30 --objective=greenest
+  gledach-whenrun plan --duration=2h --kw=11 --by=06:30 --objective=greenest
 
   ${d('# see what your configured tasks would do. Nothing runs')}
-  whenrun plan
+  gledach-whenrun plan
 
 ${b('RUNNING THINGS')}
 
@@ -45,9 +45,9 @@ ${b('RUNNING THINGS')}
   Nothing executes unless a task sets ${b('enabled: true')} ${d('and')} you pass
   ${b('--execute')}. Dry run is the default everywhere.
 
-    whenrun run --task=backup             ${d('# dry run, prints what it would do')}
-    whenrun run --task=backup --execute   ${d('# actually runs it at the window')}
-    whenrun daemon --execute              ${d('# all enabled tasks, continuously')}
+    gledach-whenrun run --task=backup             ${d('# dry run, prints what it would do')}
+    gledach-whenrun run --task=backup --execute   ${d('# actually runs it at the window')}
+    gledach-whenrun daemon --execute              ${d('# all enabled tasks, continuously')}
 
 ${b('WHERE YOU ARE')}
 
@@ -55,7 +55,7 @@ ${b('WHERE YOU ARE')}
 
     cp config/location.default.mjs config/location.local.mjs
 
-  then edit the copy, which is gitignored. ${b('whenrun where')} lists every zone.
+  then edit the copy, which is gitignored. ${b('gledach-whenrun where')} lists every zone.
   For one command only, pass ${b('--zone=AT')}.
 
 ${b('TELLING IT THE TIME')}

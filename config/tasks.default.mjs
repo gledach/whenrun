@@ -1,7 +1,7 @@
 /* The shipped task list.
  *
  * Every task here is disabled and every command is harmless, on purpose. A
- * fresh clone must be able to run `whenrun plan` and see something real without
+ * fresh clone must be able to run `gledach-whenrun plan` and see something real without
  * being one typo away from executing anything.
  *
  * To make it yours:

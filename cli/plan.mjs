@@ -105,7 +105,7 @@ export default async function plan({ flags }) {
   }
 
   console.log(c.dim(`  Tariff: ${tariffFile ?? 'built-in default'}`));
-  console.log(c.dim('  Nothing has been run. Use `whenrun run --task=<id> --execute`.'));
+  console.log(c.dim('  Nothing has been run. Use `gledach-whenrun run --task=<id> --execute`.'));
   console.log('');
   return 0;
 }

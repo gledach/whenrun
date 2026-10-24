@@ -284,7 +284,7 @@ async function handle(msg) {
       });
     } catch (err) {
       return result(id, {
-        content: [{ type: 'text', text: `whenrun ${name} failed: ${err.message}` }],
+        content: [{ type: 'text', text: `gledach-whenrun ${name} failed: ${err.message}` }],
         isError: true,
       });
     }

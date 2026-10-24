@@ -19,7 +19,7 @@ import { bool, num } from '../core/args.mjs';
 export default async function run({ flags }) {
   const id = typeof flags.task === 'string' ? flags.task : null;
   if (!id) {
-    console.error('Which task? Use --task=<id>. See `whenrun tasks`.');
+    console.error('Which task? Use --task=<id>. See `gledach-whenrun tasks`.');
     return 2;
   }
 
@@ -31,7 +31,7 @@ export default async function run({ flags }) {
   const { tasks } = await loadTasks();
   const task = tasks.find((t) => t.id === id);
   if (!task) {
-    console.error(`No task "${id}". See \`whenrun tasks\`.`);
+    console.error(`No task "${id}". See \`gledach-whenrun tasks\`.`);
     return 2;
   }
 
